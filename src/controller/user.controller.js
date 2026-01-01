@@ -1,5 +1,5 @@
-import asyncHandler from "../utils/asyncHandler.js";
 import prisma from "../../prisma/prisma.js";
+import asyncHandler from "../utils/asyncHandler.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -60,8 +60,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   const payload = {
-    userId: Number(getUser.id),
-    email: getUser.email,
+    id: Number(getUser.id),
     role: "user",
   };
 
