@@ -3,7 +3,7 @@ import {
   createPost,
   deletePost,
   updatePost,
-} from "../controller/post.controller";
+} from "../controller/post.controller.js";
 import { tokenVerify } from "../middleware/jwtVerify.js";
 
 const router = express.Router();
