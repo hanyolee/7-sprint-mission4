@@ -1,3 +1,4 @@
+import e from "express";
 import prisma from "../../prisma/prisma.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
@@ -57,4 +58,72 @@ export const updatePost = asyncHandler(async (req, res) => {
   }
 
   res.status(201).json({ message: "update ok!" });
+});
+
+export const createPostComment = asyncHandler(async (req, res) => {
+  const userId = BigInt(req.user.id);
+  const postId = BigInt(req.params.postId);
+  const { contents } = req.body;
+
+  const postComment = await prisma.comment.create({
+    data: {
+      contents,
+      user_id: userId,
+      post_id: postId,
+    },
+  });
+
+  res.status(201).json({ message: "post comment ok" });
+});
+
+export const deletePostComment = asyncHandler(async (req, res) => {
+  const userId = BigInt(req.user.id);
+  const postId = BigInt(req.params.postId);
+  const commentId = BigInt(req.params.commentId);
+
+  try {
+    const postComment = await prisma.comment.delete({
+      where: {
+        user_id: userId,
+        post_id: postId,
+        id: commentId,
+      },
+    });
+  } catch (e) {
+    if (e.code === "P2025") {
+      res.status(404).json({ message: "not exists postComment" });
+    } else {
+      throw e;
+    }
+  }
+
+  res.status(201).json({ message: "delete comment ok" });
+});
+
+export const updatePostComment = asyncHandler(async (req, res) => {
+  const userId = BigInt(req.user.id);
+  const postId = BigInt(req.params.postId);
+  const commentId = BigInt(req.params.commentId);
+  const { contents } = req.body;
+
+  try {
+    const postComment = await prisma.comment.update({
+      where: {
+        user_id: userId,
+        post_id: postId,
+        id: commentId,
+      },
+      data: {
+        contents,
+      },
+    });
+  } catch (e) {
+    if (e.code === "P2025") {
+      res.status(404).json({ message: "not exists postComment" });
+    } else {
+      throw e;
+    }
+  }
+
+  res.status(201).json({ message: "update comment ok" });
 });
