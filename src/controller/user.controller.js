@@ -53,9 +53,9 @@ export const login = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "not exists email" });
   }
 
-  const matchPassword = await bcrypt.compare(password, getUser.password);
+  const isMatch = await bcrypt.compare(password, getUser.password);
 
-  if (!matchPassword) {
+  if (!isMatch) {
     return res.status(404).json({ message: "invalid password" });
   }
 
@@ -64,9 +64,77 @@ export const login = asyncHandler(async (req, res) => {
     role: "user",
   };
 
-  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+  const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
+    expiresIn: "1h",
+  });
+  const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: "1d",
+  });
 
-  res.status(201).json({ message: "login success", accessToken: token });
+  await prisma.user.update({
+    where: {
+      id: getUser.id,
+    },
+    data: {
+      refresh_token: refreshToken,
+    },
+  });
+
+  res.cookie("access_token", accessToken, {
+    httpOnly: true,
+    maxAge: 60 * 60 * 1000, // 1hour
+  });
+  res.cookie("refresh_token", refreshToken, {
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    path: "/api/user/auth/refresh",
+  });
+
+  res.status(201).json({ message: "login success" });
+});
+
+export const refreshTokens = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  const payload = {
+    id: Number(userId),
+    role: "user",
+  };
+
+  const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
+    expiresIn: "1h",
+  });
+  const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: "1d",
+  });
+
+  await prisma.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      refresh_token: refreshToken,
+    },
+  });
+
+  res.cookie("access_token", accessToken, {
+    httpOnly: true,
+    maxAge: 60 * 60 * 1000, // 1hour
+  });
+  res.cookie("refresh_token", refreshToken, {
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    path: "/api/user/auth/refresh",
+  });
+
+  res.json({ message: "Token refresh ok" });
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  res.clearCookie("access_token");
+  res.clearCookie("refresh_token");
+
+  res.json({ message: "logout ok" });
 });
 
 export const checkUserInfo = asyncHandler(async (req, res) => {
@@ -119,9 +187,9 @@ export const updateUserInfo = asyncHandler(async (req, res) => {
 
 export const updateUserPassword = asyncHandler(async (req, res) => {
   const userId = BigInt(req.user.id);
-  const { newPassword } = req.body;
+  const { currentPassword, newPassword } = req.body;
 
-  const currentPassword = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: {
       id: userId,
     },
@@ -130,7 +198,11 @@ export const updateUserPassword = asyncHandler(async (req, res) => {
     },
   });
 
-  const isMatch = bcrypt.compare(currentPassword, newPassword);
+  if (!user) {
+    return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
   if (!isMatch) {
     return res
       .status(400)
@@ -154,4 +226,32 @@ export const updateUserPassword = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({ message: "비밀번호가 변경되었습니다." });
+});
+
+export const checkUserProduct = asyncHandler(async (req, res) => {
+  const userId = BigInt(req.user.id);
+
+  const product = await prisma.product.findMany({
+    where: {
+      user_id: userId,
+    },
+  });
+
+  if (!product) {
+    return res
+      .status(404)
+      .json({ error: "유저의 정보로 작성 된 상품이 없습니다." });
+  }
+
+  const productList = product.map((data) => {
+    return {
+      id: data.id.toString(),
+      name: data.name,
+      price: data.price,
+      like_count: data.like_count,
+      user_id: data.user_id.toString(),
+    };
+  });
+
+  res.status(201).json(productList);
 });

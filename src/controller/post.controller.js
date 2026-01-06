@@ -127,3 +127,48 @@ export const updatePostComment = asyncHandler(async (req, res) => {
 
   res.status(201).json({ message: "update comment ok" });
 });
+
+export const toggleProductLike = asyncHandler(async (req, res) => {
+  const userId = BigInt(req.user.id);
+  const postId = BigInt(req.params.postId);
+
+  const existingLike = await prisma.postLike.findUnique({
+    where: {
+      user_id_post_id: {
+        user_id: userId,
+        post_id: postId,
+      },
+    },
+  });
+
+  let likeCount;
+
+  if (existingLike) {
+    [, { like_count: likeCount }] = await prisma.$transaction([
+      prisma.postLike.delete({
+        where: { id: existingLike.id },
+      }),
+      prisma.post.update({
+        where: { id: postId },
+        data: { like_count: { decrement: 1 } },
+        select: { like_count: true },
+      }),
+    ]);
+  } else {
+    [, { like_count: likeCount }] = await prisma.$transaction([
+      prisma.postLike.create({
+        data: {
+          user_id: userId,
+          post_id: postId,
+        },
+      }),
+      prisma.post.update({
+        where: { id: postId },
+        data: { like_count: { increment: 1 } },
+        select: { like_count: true },
+      }),
+    ]);
+  }
+
+  res.json({ liked: !existingLike, likeCount: likeCount });
+});

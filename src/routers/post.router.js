@@ -6,25 +6,28 @@ import {
   createPostComment,
   deletePostComment,
   updatePostComment,
+  toggleProductLike,
 } from "../controller/post.controller.js";
-import { tokenVerify } from "../middleware/jwtVerify.js";
+import { accessTokenVerify } from "../middleware/jwtVerify.js";
 
 const router = express.Router();
 
-router.post("/create", tokenVerify, createPost);
-router.delete("/:postId/delete", tokenVerify, deletePost);
-router.patch("/:postId/update", tokenVerify, updatePost);
+router.post("/create", accessTokenVerify, createPost);
+router.delete("/:postId/delete", accessTokenVerify, deletePost);
+router.patch("/:postId/update", accessTokenVerify, updatePost);
 
-router.post("/:postId/createComment", tokenVerify, createPostComment);
+router.post("/:postId/createComment", accessTokenVerify, createPostComment);
 router.delete(
   "/:postId/:commentId/deleteComment",
-  tokenVerify,
+  accessTokenVerify,
   deletePostComment
 );
 router.patch(
   "/:postId/:commentId/updateComment",
-  tokenVerify,
+  accessTokenVerify,
   updatePostComment
 );
+
+router.post("/:postId/like", accessTokenVerify, toggleProductLike);
 
 export default router;

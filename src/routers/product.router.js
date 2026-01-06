@@ -7,23 +7,27 @@ import {
   deleteProductComment,
   updateProductComment,
 } from "../controller/product.controller.js";
-import { tokenVerify } from "../middleware/jwtVerify.js";
+import { accessTokenVerify } from "../middleware/jwtVerify.js";
 
 const router = express.Router();
 
-router.post("/create", tokenVerify, createProduct);
-router.delete("/:productId/delete", tokenVerify, deleteProduct);
-router.patch("/:productId/update", tokenVerify, updateProduct);
+router.post("/create", accessTokenVerify, createProduct);
+router.delete("/:productId/delete", accessTokenVerify, deleteProduct);
+router.patch("/:productId/update", accessTokenVerify, updateProduct);
 
-router.post("/:productId/createComment", tokenVerify, createProductComment);
+router.post(
+  "/:productId/createComment",
+  accessTokenVerify,
+  createProductComment
+);
 router.delete(
   "/:productId/:commentId/deleteComment",
-  tokenVerify,
+  accessTokenVerify,
   deleteProductComment
 );
 router.patch(
   "/:productId/:commentId/updateComment",
-  tokenVerify,
+  accessTokenVerify,
   updateProductComment
 );
 

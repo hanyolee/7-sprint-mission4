@@ -1,21 +1,18 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
+import prisma from "../../prisma/prisma.js";
 
-export const tokenVerify = asyncHandler(async (req, res, next) => {
-  const accessToken = req.headers.accesstoken;
+export const accessTokenVerify = asyncHandler(async (req, res, next) => {
+  const accessToken = req.cookies.access_token;
+
+  console.log(accessToken);
 
   if (!accessToken) {
     return res.status(401).json({ message: "not exists accessToken" });
   }
 
-  const [bearer, token] = accessToken.split(" ");
-
-  if (bearer !== "Bearer" || !token) {
-    return res.status(401).json({ message: "not Bearer token" });
-  }
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(accessToken, process.env.JWT_ACCESS_SECRET);
     req.user = {
       id: decoded.id,
       role: decoded.role,
@@ -25,6 +22,41 @@ export const tokenVerify = asyncHandler(async (req, res, next) => {
   } catch (e) {
     return res.status(401).json({
       message: "유효하지 않은 토큰입니다",
+    });
+  }
+});
+
+export const refreshTokenVerify = asyncHandler(async (req, res, next) => {
+  const refreshToken = req.cookies.refresh_token;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: "not exists refreshToken" });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: decoded.id,
+      },
+    });
+
+    if (!user || user.refresh_token !== refreshToken) {
+      return res.status(401).json({
+        message: "유효하지 않은 Refresh Token입니다. 다시 로그인해주세요.",
+      });
+    }
+
+    req.user = {
+      id: user.id,
+      role: user.role,
+    };
+
+    next();
+  } catch (e) {
+    return res.status(401).json({
+      message: "Refresh Token이 만료되었습니다. 다시 로그인해주세요.",
     });
   }
 });
